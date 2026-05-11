@@ -11,61 +11,60 @@ class DashboardController extends Controller
     {
         $table = 'ninjavan_data';
         
-        // 1. Get filter status from request (default to 'all')
+        // 1. Get filter status from request
+        $selectedYear = $request->get('year', '2023');
         $selectedMonth = $request->get('month', 'all');
 
-        // Create a base query to reuse for all metrics
+        // Create a base query
         $query = DB::table($table);
 
-        // 2. Apply Month Filter if a specific month is picked
+        // 2. Apply Year Filter 
+        $query->where('Delivery_Date', 'LIKE', '%' . $selectedYear . '%');
+
+        // 3. Apply Month Filter if a specific month is picked
         if ($selectedMonth !== 'all') {
-            $query->whereMonth('Delivery_Date', $selectedMonth);
+            $formattedMonth = str_pad($selectedMonth, 2, '0', STR_PAD_LEFT);
+            $query->where(function($q) use ($selectedMonth, $formattedMonth) {
+                $q->where('Delivery_Date', 'LIKE', '%/' . $selectedMonth . '/%')
+                  ->orWhere('Delivery_Date', 'LIKE', '%/' . $formattedMonth . '/%');
+            });
         }
 
-        // 3. Filtered Metrics
+        // 4. Metrics
         $totalParcel = (clone $query)->count();
-        $totalWeight = (clone $query)->sum('Original_Weight');
-        $avgWeight   = (clone $query)->avg('Original_Weight');
+        $totalWeight = (clone $query)->sum('Original_Weight') ?: 0;
+        $avgWeight   = (clone $query)->avg('Original_Weight') ?: 0;
         $delivered   = (clone $query)->where('Order_Granular_Status', 'LIKE', '%DELIVERED%')->count();
 
-        // 4. TOP 3 STATES
+        // 5. TOP 3 STATES
         $stateStats = (clone $query)
-            ->select(DB::raw('`L1_Name` as state, COUNT(*) as total'))
-            ->groupBy('state')
+            ->select('L1_Name as state', DB::raw('COUNT(*) as total'))
+            ->groupBy('L1_Name')
             ->orderByDesc('total')
             ->limit(3)
             ->get();
         $stateLabels = $stateStats->pluck('state');
         $stateData = $stateStats->pluck('total');
 
-        // 5. Parcel Size Distribution
+        // 6. Parcel Size Distribution
         $sizeStats = (clone $query)
-            ->select(DB::raw('`Parcel_Size_ID` as size, COUNT(*) as total'))
-            ->groupBy('size')
+            ->select('Parcel_Size_ID as size', DB::raw('COUNT(*) as total'))
+            ->groupBy('Parcel_Size_ID')
             ->get();
         $sizeLabels = $sizeStats->pluck('size');
         $sizeData = $sizeStats->pluck('total');
 
-        // 6. Dynamic Trend Logic
-        if ($selectedMonth !== 'all') {
-            // VIEW MONTH: Show daily counts (2023-02-01, 2023-02-02, etc.)
-            $trend = (clone $query)
-                ->select(DB::raw('DATE(`Delivery_Date`) as label, COUNT(*) as total'))
-                ->groupBy('label')
-                ->orderBy('label')
-                ->get();
-        } else {
-            // VIEW ALL: Show monthly counts (January, February, etc.)
-            $trend = DB::table($table)
-                ->select(DB::raw('MONTHNAME(`Delivery_Date`) as label, COUNT(*) as total'))
-                ->groupBy('label')
-                ->orderBy(DB::raw('MONTH(`Delivery_Date`)'))
-                ->get();
-        }
+        // 7. Trend Logic
+        $trend = (clone $query)
+            ->select('Delivery_Date as label', DB::raw('COUNT(*) as total'))
+            ->groupBy('Delivery_Date')
+            ->orderBy('Delivery_Date')
+            ->get();
+            
         $trendLabels = $trend->pluck('label');
         $trendData = $trend->pluck('total');
 
-        // 7. Gender Distribution
+        // 8. Gender Distribution
         $genderData = (clone $query)
             ->select('Gender', DB::raw('count(*) as count'))
             ->groupBy('Gender')
@@ -74,7 +73,42 @@ class DashboardController extends Controller
         return view('dashboard', compact(
             'totalParcel', 'totalWeight', 'avgWeight', 'delivered', 
             'stateLabels', 'stateData', 'sizeLabels', 'sizeData',
-            'trendLabels', 'trendData', 'genderData', 'selectedMonth'
+            'trendLabels', 'trendData', 'genderData', 'selectedMonth', 'selectedYear'
+        ));
+    }
+
+    /**
+     * Feedback Page Logic
+     */
+    public function feedback()
+    {
+        $table = 'feedback_data';
+
+        // 1. Get all raw feedback for the comments table
+        $feedback = DB::table($table)->orderByDesc('id')->get();
+
+        // 2. Calculate Average Ratings (1-5 scale)
+        $avgPunctuality = DB::table($table)->avg('punctuality') ?: 0;
+        $avgCondition   = DB::table($table)->avg('condition_rating') ?: 0;
+        $avgAttitude    = DB::table($table)->avg('attitude') ?: 0;
+
+        // 3. Trust Distribution for Chart (Question 6)
+        $trustStats = DB::table($table)
+            ->select('trust_rating', DB::raw('count(*) as total'))
+            ->groupBy('trust_rating')
+            ->orderBy('trust_rating')
+            ->get();
+        
+        $trustLabels = $trustStats->pluck('trust_rating'); // e.g. 1, 2, 3, 4, 5
+        $trustData = $trustStats->pluck('total');
+
+        return view('feedback', compact(
+            'feedback', 
+            'avgPunctuality', 
+            'avgCondition', 
+            'avgAttitude', 
+            'trustLabels', 
+            'trustData'
         ));
     }
 }

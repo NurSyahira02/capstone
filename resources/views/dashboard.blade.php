@@ -32,6 +32,16 @@
         </div>
     </div>
 
+    {{-- Malaysia Map Section --}}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card p-4 shadow-sm border-0">
+                <h5 class="fw-bold mb-3">Geographical Distribution (Malaysia)</h5>
+                <div id="vmap-malaysia" style="width: 100%; height: 400px; background-color: #f8f9fa; border-radius: 8px;"></div>
+            </div>
+        </div>
+    </div>
+
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card p-3 shadow-sm border-0">
@@ -92,7 +102,7 @@
     </div>
 
     <div class="card p-3 shadow-sm border-0">
-        <h5 class="fw-bold mb-3">Latest Parcels ({{ $selectedYear }} {{ $selectedMonth !== 'all' ? '- Month '.$selectedMonth : '' }})</h5>
+        <h5 class="fw-bold mb-3">Latest Parcels ({{ $selectedYear }})</h5>
         <div class="table-responsive">
             <table class="table table-sm table-hover">
                 <thead class="table-light">
@@ -132,80 +142,102 @@
 </div>
 
 <script>
-    // 1. TOP 3 STATES CHART
-    const stateLabels = {!! json_encode($stateLabels) !!};
-    const stateData = {!! json_encode($stateData) !!};
+    // 1. Chart.js Initializations
+    document.addEventListener('DOMContentLoaded', function() {
+        // --- TOP 3 STATES ---
+        new Chart(document.getElementById('stateChart'), {
+            type: 'bar',
+            data: {
+                labels: {!! json_encode($stateLabels) !!},
+                datasets: [{
+                    label: 'Parcels',
+                    data: {!! json_encode($stateData) !!},
+                    backgroundColor: 'rgba(220, 53, 69, 0.8)',
+                    borderRadius: 5
+                }]
+            }
+        });
 
-    new Chart(document.getElementById('stateChart'), {
-        type: 'bar',
-        data: {
-            labels: stateLabels,
-            datasets: [{
-                label: 'Parcels',
-                data: stateData,
-                backgroundColor: 'rgba(220, 53, 69, 0.8)',
-                borderRadius: 5
-            }]
-        },
-        options: { scales: { y: { beginAtZero: true } } }
+        // --- SIZE DISTRIBUTION ---
+        const sizeRawKeys = {!! json_encode($sizeLabels) !!};
+        const sizeRawValues = {!! json_encode($sizeData) !!};
+        let groupedSize = { 'Small': 0, 'Other': 0 };
+        sizeRawKeys.forEach((id, index) => {
+            if (id == 1) groupedSize['Small'] += sizeRawValues[index];
+            else groupedSize['Other'] += sizeRawValues[index];
+        });
+        new Chart(document.getElementById('sizeChart'), {
+            type: 'pie',
+            data: {
+                labels: Object.keys(groupedSize),
+                datasets: [{
+                    data: Object.values(groupedSize),
+                    backgroundColor: ['#dc3545', '#6c757d']
+                }]
+            }
+        });
+
+        // --- GENDER DISTRIBUTION ---
+        const genderRaw = {!! json_encode($genderData) !!};
+        new Chart(document.getElementById('genderChart'), {
+            type: 'pie',
+            data: {
+                labels: genderRaw.map(item => (item.Gender == 1 ? 'Female' : 'Male')),
+                datasets: [{
+                    data: genderRaw.map(item => item.count),
+                    backgroundColor: ['#fd35b0', '#0d6efd']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+
+        // --- TREND CHART ---
+        new Chart(document.getElementById('trendChart'), {
+            type: 'line',
+            data: {
+                labels: {!! json_encode($trendLabels) !!},
+                datasets: [{
+                    label: 'Parcels',
+                    data: {!! json_encode($trendData) !!},
+                    borderColor: '#dc3545',
+                    fill: true,
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.3
+                }]
+            }
+        });
     });
 
-    // 2. PARCEL SIZE CHART
-    const sizeRawKeys = {!! json_encode($sizeLabels) !!};
-    const sizeRawValues = {!! json_encode($sizeData) !!};
-    let groupedSize = { 'Small': 0, 'Other': 0 };
-    sizeRawKeys.forEach((id, index) => {
-        if (id == 1) groupedSize['Small'] += sizeRawValues[index];
-        else groupedSize['Other'] += sizeRawValues[index];
-    });
-
-    new Chart(document.getElementById('sizeChart'), {
-        type: 'pie',
-        data: {
-            labels: Object.keys(groupedSize),
-            datasets: [{
-                data: Object.values(groupedSize),
-                backgroundColor: ['#dc3545', '#6c757d']
-            }]
+    // 2. JQVMap Initialization Fix
+    window.onload = function() {
+        try {
+            if (typeof jQuery !== 'undefined' && typeof jQuery.fn.vectorMap !== 'undefined') {
+                $('#vmap-malaysia').vectorMap({
+                    map: 'malaysia',
+                    backgroundColor: '#f8f9fa',
+                    color: '#f8d7da',
+                    hoverOpacity: 0.8,
+                    hoverColor: '#dc3545',
+                    selectedColor: '#dc3545',
+                    enableZoom: true,
+                    showTooltip: true,
+                    
+                    // --- CAMERA RESET ---
+                    scale: 1, 
+                    focusOn: {
+                        x: 0.5, 
+                        y: 0.5,
+                        scale: 1 
+                    },
+                    
+                    onRegionClick: function(element, code, region) {
+                        console.log("Clicked: " + region);
+                    }
+                });
+            }
+        } catch (e) {
+            console.error("Map error:", e);
         }
-    });
-
-    // 3. GENDER CHART
-    const genderRaw = {!! json_encode($genderData) !!};
-    const genderLabels = genderRaw.map(item => (item.Gender == 1 ? 'Female' : 'Male'));
-    const genderCounts = genderRaw.map(item => item.count);
-
-    new Chart(document.getElementById('genderChart'), {
-        type: 'pie',
-        data: {
-            labels: genderLabels,
-            datasets: [{
-                data: genderCounts,
-                backgroundColor: ['#0d6efd', '#fd35b0']
-            }]
-        },
-        options: { responsive: true, maintainAspectRatio: false }
-    });
-
-    // 4. TREND CHART
-    const trendLabels = {!! json_encode($trendLabels) !!};
-    const trendData = {!! json_encode($trendData) !!};
-
-    new Chart(document.getElementById('trendChart'), {
-        type: 'line',
-        data: {
-            labels: trendLabels,
-            datasets: [{
-                label: 'Parcels',
-                data: trendData,
-                fill: true,
-                tension: 0.3,
-                backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                borderColor: '#dc3545',
-                pointBackgroundColor: '#dc3545'
-            }]
-        },
-        options: { scales: { y: { beginAtZero: true } } }
-    });
+    };
 </script>
 @endsection

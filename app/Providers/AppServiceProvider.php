@@ -20,8 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Bulletproof check: If the URL contains 'railway.app', force HTTPS
-        if (str_contains(request()->url(), 'railway.app')) {
+        // Check the environment configuration directly rather than checking the URL
+        if (config('app.env') === 'production' || env('APP_ENV') === 'production') {
             URL::forceScheme('https');
         }
     }

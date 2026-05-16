@@ -3,7 +3,7 @@
 namespace App\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL; // <-- Added this to handle secure link generation
+use Illuminate\Support\Facades\URL;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -20,8 +20,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Force HTTPS when running live on Railway production
-        if (config('app.env') === 'production' || app()->environment('production')) {
+        // Bulletproof check: If the URL contains 'railway.app', force HTTPS
+        if (str_contains(request()->url(), 'railway.app')) {
             URL::forceScheme('https');
         }
     }

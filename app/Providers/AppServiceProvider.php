@@ -19,10 +19,12 @@ class AppServiceProvider extends ServiceProvider
      * Bootstrap any application services.
      */
     public function boot(): void
-    {
-        // Check the environment configuration directly rather than checking the URL
-        if (config('app.env') === 'production' || env('APP_ENV') === 'production') {
-            URL::forceScheme('https');
-        }
+{
+    // If the website is being accessed via an external live railway domain, force HTTPS
+    if (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https') {
+        \Illuminate\Support\Facades\URL::forceScheme('https');
+    } elseif (str_contains(request()->getHttpHost(), 'railway.app')) {
+        \Illuminate\Support\Facades\URL::forceScheme('https');
     }
+}
 }

@@ -81,8 +81,12 @@
         <a class="nav-link {{ request()->is('feedback') ? 'active' : '' }}" href="{{ route('feedback') }}">
             <i class="bi bi-people-fill me-2"></i> CUSTOMER
         </a>
-        <a class="nav-link text-muted" href="#"><i class="bi bi-chat-dots me-2"></i> CHATBOT</a>
-        <a class="nav-link text-muted" href="#"><i class="bi bi-lightning-charge me-2"></i> FLASH</a>
+        <a class="nav-link {{ request()->is('chatbot') ? 'active' : '' }}" href="{{ route('chatbot') }}">
+            <i class="bi bi-chat-dots me-2"></i> CHATBOT
+        </a>
+        <a class="nav-link text-muted" href="#">
+            <i class="bi bi-lightning-charge me-2"></i> FLASH
+        </a>
     </nav>
 </div>
 

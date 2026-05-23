@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\CustomerRating;
 
 class DashboardController extends Controller
 {
@@ -78,28 +79,30 @@ class DashboardController extends Controller
     }
 
     /**
-     * Feedback Page Logic
+     * Feedback Page Logic (Customer Page)
      */
     public function feedback()
     {
         $table = 'feedback_data';
 
-        // 1. Get all raw feedback for the comments table
+        // 1. Get all raw feedback for the 35 comments rows
         $feedback = DB::table($table)->orderByDesc('id')->get();
 
-        // 2. Calculate Average Ratings (1-5 scale)
-        $avgPunctuality = DB::table($table)->avg('punctuality') ?: 0;
-        $avgCondition   = DB::table($table)->avg('condition_rating') ?: 0;
-        $avgAttitude    = DB::table($table)->avg('attitude') ?: 0;
+        // 2. Fetch the 52 survey responses calculations from your CustomerRating model 
+        $avgPunctuality = CustomerRating::avg('rating_punctuality') ?? 0;
+        $avgCondition   = CustomerRating::avg('rating_condition') ?? 0;
+        $avgAttitude    = CustomerRating::avg('rating_attitude') ?? 0;
+        $avgTrust       = CustomerRating::avg('rating_trust') ?? 0;
+        $totalResponses = CustomerRating::count();
 
-        // 3. Trust Distribution for Chart (Question 6)
+        // 3. Trust Distribution for Chart (From your feedback_data table)
         $trustStats = DB::table($table)
             ->select('trust_rating', DB::raw('count(*) as total'))
             ->groupBy('trust_rating')
             ->orderBy('trust_rating')
             ->get();
         
-        $trustLabels = $trustStats->pluck('trust_rating'); // e.g. 1, 2, 3, 4, 5
+        $trustLabels = $trustStats->pluck('trust_rating');
         $trustData = $trustStats->pluck('total');
 
         return view('feedback', compact(
@@ -107,6 +110,8 @@ class DashboardController extends Controller
             'avgPunctuality', 
             'avgCondition', 
             'avgAttitude', 
+            'avgTrust',
+            'totalResponses',
             'trustLabels', 
             'trustData'
         ));

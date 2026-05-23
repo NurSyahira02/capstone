@@ -15,6 +15,8 @@
                     <select name="year" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="2023" {{ $selectedYear == '2023' ? 'selected' : '' }}>2023</option>
                         <option value="2024" {{ $selectedYear == '2024' ? 'selected' : '' }}>2024</option>
+                        <option value="2025" {{ $selectedYear == '2025' ? 'selected' : '' }}>2025</option>
+                        <option value="2026" {{ $selectedYear == '2026' ? 'selected' : '' }}>2026</option>
                     </select>
                 </div>
                 <div>
@@ -22,6 +24,9 @@
                     <select name="month" class="form-select form-select-sm" onchange="this.form.submit()">
                         <option value="all" {{ $selectedMonth == 'all' ? 'selected' : '' }}>All Months</option>
                         @for ($i = 1; $i <= 12; $i++)
+                            @if ($selectedYear == '2026' && $i > 4)
+                                @break {{-- Stops rendering months after April if 2026 is selected --}}
+                            @endif
                             <option value="{{ $i }}" {{ $selectedMonth == $i ? 'selected' : '' }}>
                                 {{ date("F", mktime(0, 0, 0, $i, 1)) }}
                             </option>
@@ -42,6 +47,7 @@
         </div>
     </div>
 
+    {{-- Original Core Metrics --}}
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="card p-3 shadow-sm border-0">
@@ -69,6 +75,7 @@
         </div>
     </div>
 
+    {{-- Charts Rows --}}
     <div class="row g-3 mb-4">
         <div class="col-lg-6">
             <div class="card p-3 shadow-sm border-0">
@@ -101,6 +108,7 @@
         </div>
     </div>
 
+    {{-- Latest Parcels Table --}}
     <div class="card p-3 shadow-sm border-0">
         <h5 class="fw-bold mb-3">Latest Parcels ({{ $selectedYear }})</h5>
         <div class="table-responsive">
@@ -208,7 +216,7 @@
         });
     });
 
-    // 2. JQVMap Initialization Fix
+    // 2. JQVMap Malaysia Map Configuration
     window.onload = function() {
         try {
             if (typeof jQuery !== 'undefined' && typeof jQuery.fn.vectorMap !== 'undefined') {
@@ -221,15 +229,12 @@
                     selectedColor: '#dc3545',
                     enableZoom: true,
                     showTooltip: true,
-                    
-                    // --- CAMERA RESET ---
                     scale: 1, 
                     focusOn: {
                         x: 0.5, 
                         y: 0.5,
                         scale: 1 
                     },
-                    
                     onRegionClick: function(element, code, region) {
                         console.log("Clicked: " + region);
                     }
